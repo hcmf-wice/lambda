@@ -32,10 +32,10 @@ public class HelloWorld implements RequestHandler<APIGatewayV2HTTPEvent, APIGate
 		APIGatewayV2HTTPResponse response = new APIGatewayV2HTTPResponse();
 		if ("/hello".equals(path) && "GET".equals(method)) {
 			response.setStatusCode(200);
-			response.setBody(String.format("{\"message\": \"Hello from Lambda\"}"));
+			response.setBody(String.format("{\"statusCode\": 200, \"message\": \"Hello from Lambda\"}"));
 		} else {
 			response.setStatusCode(400);
-			response.setBody(String.format("Bad request syntax or unsupported method. Request path: %s. HTTP method: %s", path, method));
+			response.setBody(String.format("{\"statusCode\": 400, \"message\": \"Bad request syntax or unsupported method. Request path: %s. HTTP method: %s\"}", path, method));
 		}
 		return response;
 	}
