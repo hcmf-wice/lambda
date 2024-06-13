@@ -24,7 +24,7 @@ import java.util.UUID;
 		logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED
 )
 public class ApiHandler implements RequestHandler<ApiHandler.Request, ApiHandler.Response> {
-	private static String DYNAMODB_TABLE_NAME = "Events";
+	private static String DYNAMODB_TABLE_NAME = "cmtr-95209e6a-Events";
 	private static Regions REGION = Regions.EU_CENTRAL_1;
 
 	public Response handleRequest(Request request, Context context) {
