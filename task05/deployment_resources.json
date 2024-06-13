@@ -35,26 +35,20 @@
   "task5_api": {
     "resource_type": "api_gateway",
     "deploy_stage": "api",
-    "dependencies": [
-      {
-        "resource_name": "api_handler",
-        "resource_type": "lambda"
-      }
-    ],
+    "dependencies": [],
     "resources": {
       "/events": {
-        "enable_cors": false,
+        "enable_cors": true,
         "POST": {
           "authorization_type": "NONE",
           "integration_type": "lambda",
-          "lambda_name": "hello_world",
+          "lambda_name": "api_handler",
           "api_key_required": false,
           "method_request_parameters": {},
           "integration_request_body_template": {},
           "responses": [],
           "integration_responses": [],
-          "default_error_pattern": true,
-          "enable_proxy": true
+          "default_error_pattern": true
         }
       }
     },
