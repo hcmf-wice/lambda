@@ -51,6 +51,15 @@ public class AuditProducer implements RequestHandler<DynamodbEvent, Void> {
 	private static String TARGET_TABLE_NAME = "cmtr-95209e6a-Audit";
 	private static Regions REGION = Regions.EU_CENTRAL_1;
 
+	private DynamoDB dynamoDB;
+
+	public AuditProducer() {
+		AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard()
+				.withRegion(REGION)
+				.build();
+		dynamoDB = new DynamoDB(client);
+	}
+
 	public Void handleRequest(DynamodbEvent dynamodbEvent, Context context) {
 		context.getLogger().log("dynamodbEvent: " + dynamodbEvent.toString());
 //		for (DynamodbEvent.DynamodbStreamRecord record : dynamodbEvent.getRecords()) {
@@ -60,10 +69,6 @@ public class AuditProducer implements RequestHandler<DynamodbEvent, Void> {
 	}
 
 	private Table getTargetTable() {
-		AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard()
-				.withRegion(REGION)
-				.build();
-		DynamoDB dynamoDB = new DynamoDB(client);
 		return dynamoDB.getTable(System.getenv("target_table"));
 	}
 }
