@@ -28,7 +28,7 @@ import java.util.UUID;
 		resourceType = ResourceType.DYNAMODB_TABLE
 )
 public class ApiHandler implements RequestHandler<ApiHandler.Request, ApiHandler.Response> {
-	private static String DYNAMODB_TABLE_NAME = "cmtr-95209e6a-Events";
+	private static String DYNAMODB_TABLE_NAME = "cmtr-95209e6a-Events-test";
 	private static Regions REGION = Regions.EU_CENTRAL_1;
 
 	public Response handleRequest(Request request, Context context) {
@@ -48,7 +48,7 @@ public class ApiHandler implements RequestHandler<ApiHandler.Request, ApiHandler
 		context.getLogger().log("putItemOutcome: " + putItemOutcome.toString());
 
 		Response response = new Response();
-		response.setStatusCode(200);
+		response.setStatusCode(201);
 
 		Item item1 = table.getItem(new PrimaryKey("id", id));
 		Event event = new Event();
