@@ -84,14 +84,14 @@ public class AuditProducer implements RequestHandler<DynamodbEvent, Void> {
 	private void auditInsert(Context context, DynamodbEvent.DynamodbStreamRecord record) {
 		Map<String, AttributeValue> newImage = record.getDynamodb().getNewImage();
 		String id = UUID.randomUUID().toString();
+		Map<String, Object> newValue = new HashMap<>();
+		newValue.put("key", newImage.get("key").getS());
+		newValue.put("value", Integer.valueOf(newImage.get("value").getN()));
 		Item item = new Item()
 				.withPrimaryKey("id", id)
 				.withString("itemKey", newImage.get("key").getS())
 				.withString("modificationTime", new DateTime().toString())
-				.withMap("newValue", Map.of(
-						"key", newImage.get("key").getS(),
-						"value", newImage.get("value").getN()
-				));
+				.withMap("newValue", newValue);
 		context.getLogger().log("item: " + item);
 		getTargetTable().putItem(item);
 	}
@@ -100,24 +100,53 @@ public class AuditProducer implements RequestHandler<DynamodbEvent, Void> {
 		Map<String, AttributeValue> oldImage = record.getDynamodb().getOldImage();
 		Map<String, AttributeValue> newImage = record.getDynamodb().getNewImage();
 		String id = UUID.randomUUID().toString();
+		Map<String, Object> oldValue = new HashMap<>();
+		oldValue.put("key", oldImage.get("key").getS());
+		oldValue.put("value", Integer.valueOf(oldImage.get("value").getN()));
+		Map<String, Object> newValue = new HashMap<>();
+		newValue.put("key", newImage.get("key").getS());
+		newValue.put("value", Integer.valueOf(newImage.get("value").getN()));
 		Item item = new Item()
 				.withPrimaryKey("id", id)
 				.withString("itemKey", newImage.get("key").getS())
 				.withString("modificationTime", new DateTime().toString())
 				.withString("updatedAttribute", "value")
-				.withMap("oldValue", Map.of(
-						"key", oldImage.get("key").getS(),
-						"value", oldImage.get("value").getN()
-				))
-				.withMap("newValue", Map.of(
-						"key", newImage.get("key").getS(),
-						"value", newImage.get("value").getN()
-				));
+				.withMap("oldValue", oldValue)
+				.withMap("newValue", newValue);
 		context.getLogger().log("item: " + item);
 		getTargetTable().putItem(item);
 	}
 
 	private Table getTargetTable() {
 		return dynamoDB.getTable(System.getenv("target_table"));
+	}
+
+	public static class Config {
+		private String key;
+		private int value;
+
+		public Config() {
+		}
+
+		public Config(String key, int value) {
+			this.key = key;
+			this.value = value;
+		}
+
+		public String getKey() {
+			return key;
+		}
+
+		public void setKey(String key) {
+			this.key = key;
+		}
+
+		public int getValue() {
+			return value;
+		}
+
+		public void setValue(int value) {
+			this.value = value;
+		}
 	}
 }
