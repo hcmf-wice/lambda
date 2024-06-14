@@ -100,19 +100,13 @@ public class AuditProducer implements RequestHandler<DynamodbEvent, Void> {
 		Map<String, AttributeValue> oldImage = record.getDynamodb().getOldImage();
 		Map<String, AttributeValue> newImage = record.getDynamodb().getNewImage();
 		String id = UUID.randomUUID().toString();
-		Map<String, Object> oldValue = new HashMap<>();
-		oldValue.put("key", oldImage.get("key").getS());
-		oldValue.put("value", Integer.valueOf(oldImage.get("value").getN()));
-		Map<String, Object> newValue = new HashMap<>();
-		newValue.put("key", newImage.get("key").getS());
-		newValue.put("value", Integer.valueOf(newImage.get("value").getN()));
 		Item item = new Item()
 				.withPrimaryKey("id", id)
 				.withString("itemKey", newImage.get("key").getS())
 				.withString("modificationTime", new DateTime().toString())
 				.withString("updatedAttribute", "value")
-				.withMap("oldValue", oldValue)
-				.withMap("newValue", newValue);
+				.withInt("oldValue", Integer.valueOf(oldImage.get("value").getN()))
+				.withInt("newValue", Integer.valueOf(newImage.get("value").getN()));
 		context.getLogger().log("item: " + item);
 		getTargetTable().putItem(item);
 	}
