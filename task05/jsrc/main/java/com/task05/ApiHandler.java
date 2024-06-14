@@ -3,10 +3,7 @@ package com.task05;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.services.dynamodbv2.document.Item;
-import com.amazonaws.services.dynamodbv2.document.PutItemOutcome;
-import com.amazonaws.services.dynamodbv2.document.Table;
+import com.amazonaws.services.dynamodbv2.document.*;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.syndicate.deployment.annotations.lambda.LambdaHandler;
@@ -38,19 +35,28 @@ public class ApiHandler implements RequestHandler<ApiHandler.Request, ApiHandler
 		context.getLogger().log("request: " + request.toString());
 
 		Table table = getEventsTable();
+		String id = UUID.randomUUID().toString();
 		Item item = new Item()
-				.withPrimaryKey("id", UUID.randomUUID())
+				.withPrimaryKey("id", id)
 				.withInt("principalId", request.getPrincipalId())
 				.withString("createdAt", new DateTime().toString())
 				.withMap("body", request.content);
 		context.getLogger().log("item: " + item);
+
 
 		PutItemOutcome putItemOutcome = table.putItem(item);
 		context.getLogger().log("putItemOutcome: " + putItemOutcome.toString());
 
 		Response response = new Response();
 		response.setStatusCode(200);
-		response.setEvent(item);
+
+		Item item1 = table.getItem(new PrimaryKey("id", id));
+		Event event = new Event();
+		event.setId(item1.getString("id"));
+		event.setPrincipalId(item1.getInt("principalId"));
+		event.setCreatedAt(item1.getString("createdAt"));
+		event.setBody(item1.getMap("body"));
+		response.setEvent(event);
 		return response;
 	}
 
@@ -81,6 +87,14 @@ public class ApiHandler implements RequestHandler<ApiHandler.Request, ApiHandler
 		public void setContent(Map<String, String> content) {
 			this.content = content;
 		}
+
+		@Override
+		public String toString() {
+			return "Request{" +
+					"principalId=" + principalId +
+					", content=" + content +
+					'}';
+		}
 	}
 
 	public static class Response {
@@ -101,6 +115,14 @@ public class ApiHandler implements RequestHandler<ApiHandler.Request, ApiHandler
 
 		public void setEvent(Object event) {
 			this.event = event;
+		}
+
+		@Override
+		public String toString() {
+			return "Response{" +
+					"statusCode=" + statusCode +
+					", event=" + event +
+					'}';
 		}
 	}
 
@@ -140,6 +162,16 @@ public class ApiHandler implements RequestHandler<ApiHandler.Request, ApiHandler
 
 		public void setBody(Map<String, String> body) {
 			this.body = body;
+		}
+
+		@Override
+		public String toString() {
+			return "Event{" +
+					"id='" + id + '\'' +
+					", principalId=" + principalId +
+					", createdAt='" + createdAt + '\'' +
+					", body=" + body +
+					'}';
 		}
 	}
 }
