@@ -2,6 +2,7 @@ package com.task10;
 
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProviderClientBuilder;
+import com.amazonaws.services.cognitoidp.model.*;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -21,6 +22,7 @@ import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
 import org.apache.http.HttpStatus;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -93,27 +95,31 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	private APIGatewayProxyResponseEvent handleSignup(APIGatewayProxyRequestEvent requestEvent) {
 		var body = requestEvent.getBody();
 		try {
-			var requestMap = gson.fromJson(body, new TypeToken<Map<String, Object>>(){});
+			var requestMap = gson.fromJson(body, new TypeToken<Map<String, String>>(){});
 			validateSignupRequest(requestMap);
 
-		} catch (InvalidRequest | JsonSyntaxException ex) {
+			AdminCreateUserRequest cognitoRequest = new AdminCreateUserRequest()
+					.withMessageAction(MessageActionType.SUPPRESS)
+					.withUserPoolId(bookingUserpool)
+					.withUsername(requestMap.get("email"))
+					.withTemporaryPassword(requestMap.get("password"))
+					.withForceAliasCreation(false);
+
+			cognitoClient.adminCreateUser(cognitoRequest);
+
+			return ok("");
+		} catch (JsonSyntaxException | InvalidRequest | UsernameExistsException ex) {
 			return badRequest();
 		}
-
-		return null;
 	}
 
-	private void validateSignupRequest(Map<String, Object> requestMap) {
-		if (requestMap.get("firstName") instanceof String
-				&& !StringUtils.isNullOrEmpty((String) requestMap.get("firstName"))
-				&& requestMap.get("lastName") instanceof String
-				&& !StringUtils.isNullOrEmpty((String) requestMap.get("lastName"))
-				&& requestMap.get("email") instanceof String
-				&& isValidEmailAddress((String) requestMap.get("email"))
-				&& requestMap.get("password") instanceof String
-				&& !StringUtils.isNullOrEmpty((String) requestMap.get("password"))
-				&& ((String) requestMap.get("password")).length() >= 12
-				&& passwordPattern.matcher((String) requestMap.get("password")).matches()
+	private void validateSignupRequest(Map<String, String> requestMap) {
+		if (!StringUtils.isNullOrEmpty(requestMap.get("firstName"))
+				&& !StringUtils.isNullOrEmpty(requestMap.get("lastName"))
+				&& isValidEmailAddress(requestMap.get("email"))
+				&& !StringUtils.isNullOrEmpty(requestMap.get("password"))
+				&& (requestMap.get("password")).length() >= 12
+				&& passwordPattern.matcher(requestMap.get("password")).matches()
 		) {
 			return;
 		}
@@ -122,7 +128,41 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	}
 
 	private APIGatewayProxyResponseEvent handleSignin(APIGatewayProxyRequestEvent requestEvent) {
-		return null;
+		var body = requestEvent.getBody();
+
+		try {
+			var requestMap = gson.fromJson(body, new TypeToken<Map<String, String>>(){});
+			validateSigninRequest(requestMap);
+
+			var authParams = new HashMap<String,String>();
+			authParams.put("USERNAME", requestMap.get("email"));
+			authParams.put("PASSWORD", requestMap.get("password"));
+
+			var authRequest = new AdminInitiateAuthRequest()
+					.withAuthFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
+					.withAuthParameters(authParams)
+					.withUserPoolId(bookingUserpool);
+
+			var authResponse = cognitoClient.adminInitiateAuth(authRequest);
+			var accessToken = authResponse.getAuthenticationResult().getAccessToken();
+
+			return ok(gson.toJson(Map.of("accessToken", accessToken)));
+
+		} catch (JsonSyntaxException | InvalidRequest | UserNotFoundException | NotAuthorizedException ex) {
+			return badRequest();
+		}
+	}
+
+	private void validateSigninRequest(Map<String, String> requestMap) {
+		if (isValidEmailAddress(requestMap.get("email"))
+				&& !StringUtils.isNullOrEmpty(requestMap.get("password"))
+				&& (requestMap.get("password")).length() >= 12
+				&& passwordPattern.matcher(requestMap.get("password")).matches()
+		) {
+			return;
+		}
+
+		throw new InvalidRequest();
 	}
 
 	private APIGatewayProxyResponseEvent handleTables(APIGatewayProxyRequestEvent requestEvent) {
@@ -139,6 +179,10 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 
 	private APIGatewayProxyResponseEvent badRequest() {
 		return new APIGatewayProxyResponseEvent().withStatusCode(HttpStatus.SC_BAD_REQUEST);
+	}
+
+	private APIGatewayProxyResponseEvent ok(String message) {
+		return new APIGatewayProxyResponseEvent().withStatusCode(HttpStatus.SC_OK).withBody(message);
 	}
 
 	public class InvalidRequest extends RuntimeException {
