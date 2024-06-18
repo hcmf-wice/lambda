@@ -4,6 +4,7 @@ import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProviderClientBuilder;
 import com.amazonaws.services.cognitoidp.model.*;
 import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -22,6 +23,7 @@ import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
 import org.apache.http.HttpStatus;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +60,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	private final String reservationsTable;
 	private final String bookingUserpool;
 
+	private LambdaLogger logger;
 
 	public ApiHandler() {
 		tablesTable = System.getenv("tables_table");
@@ -66,6 +69,8 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	}
 
 	public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent requestEvent, Context context) {
+		logger = context.getLogger();
+
 		String path = requestEvent.getPath();
 		switch (path) {
 			case "/signup":
@@ -98,17 +103,25 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 			var requestMap = gson.fromJson(body, new TypeToken<Map<String, String>>(){});
 			validateSignupRequest(requestMap);
 
-			AdminCreateUserRequest cognitoRequest = new AdminCreateUserRequest()
-					.withMessageAction(MessageActionType.SUPPRESS)
-					.withUserPoolId(getUserPoolId())
-					.withUsername(requestMap.get("email"))
-					.withTemporaryPassword(requestMap.get("password"))
-					.withForceAliasCreation(false);
+//			AdminCreateUserRequest cognitoRequest = new AdminCreateUserRequest()
+//					.withMessageAction(MessageActionType.SUPPRESS)
+//					.withUserPoolId(getUserPoolId())
+//					.withUsername(requestMap.get("email"))
+//					.withTemporaryPassword(requestMap.get("password"))
+//					.withForceAliasCreation(false);
+//
+//			cognitoClient.adminCreateUser(cognitoRequest);
 
-			cognitoClient.adminCreateUser(cognitoRequest);
+			SignUpRequest signUpRequest = new SignUpRequest()
+					.withUsername(requestMap.get("email"))
+					.withPassword(requestMap.get("password"))
+					.withClientId(getClientId());
+			cognitoClient.signUp(signUpRequest);
 
 			return ok("");
-		} catch (JsonSyntaxException | InvalidRequest | UsernameExistsException ex) {
+		} catch (Exception ex) {
+			logger.log(ex.toString());
+			logger.log(Arrays.toString(ex.getStackTrace()));
 			return badRequest();
 		}
 	}
@@ -119,7 +132,10 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 				&& isValidEmailAddress(requestMap.get("email"))
 				&& !StringUtils.isNullOrEmpty(requestMap.get("password"))
 				&& (requestMap.get("password")).length() >= 12
-				&& passwordPattern.matcher(requestMap.get("password")).matches()
+				&& Pattern.compile("[A-Z]").matcher(requestMap.get("password")).find()
+				&& Pattern.compile("[a-z]").matcher(requestMap.get("password")).find()
+				&& Pattern.compile("[0-9]").matcher(requestMap.get("password")).find()
+				&& Pattern.compile("[$%^*]").matcher(requestMap.get("password")).find()
 		) {
 			return;
 		}
@@ -134,22 +150,24 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 			var requestMap = gson.fromJson(body, new TypeToken<Map<String, String>>(){});
 			validateSigninRequest(requestMap);
 
-			var authParams = new HashMap<String,String>();
-			authParams.put("USERNAME", requestMap.get("email"));
-			authParams.put("PASSWORD", requestMap.get("password"));
-
 			var authRequest = new AdminInitiateAuthRequest()
-					.withAuthFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
-					.withAuthParameters(authParams)
+					.withAuthFlow(AuthFlowType.ADMIN_USER_PASSWORD_AUTH)
+					.withAuthParameters(Map.of(
+							"USERNAME", requestMap.get("email"),
+							"PASSWORD", requestMap.get("password")
+					))
 					.withUserPoolId(getUserPoolId())
 					.withClientId(getClientId());
 
 			var authResponse = cognitoClient.adminInitiateAuth(authRequest);
+			logger.log(authResponse.toString());
 			var accessToken = authResponse.getAuthenticationResult().getAccessToken();
 
 			return ok(gson.toJson(Map.of("accessToken", accessToken)));
 
-		} catch (JsonSyntaxException | InvalidRequest | UserNotFoundException | NotAuthorizedException ex) {
+		} catch (Exception ex) {
+			logger.log(ex.toString());
+			logger.log(Arrays.toString(ex.getStackTrace()));
 			return badRequest();
 		}
 	}
@@ -210,7 +228,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	}
 
 	private String getClientId() {
-		return cognitoClient.listUserPoolClients(new ListUserPoolClientsRequest().withUserPoolId(bookingUserpool).withMaxResults(1))
+		return cognitoClient.listUserPoolClients(new ListUserPoolClientsRequest().withUserPoolId(getUserPoolId()).withMaxResults(1))
 				.getUserPoolClients().stream()
 				.filter(client -> client.getClientName().contains("client-app"))
 				.findAny()
