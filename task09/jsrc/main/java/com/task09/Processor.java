@@ -89,6 +89,12 @@ public class Processor implements RequestHandler<Object, Void> {
 
 			var id = UUID.randomUUID().toString();
 			var forecast = gson.fromJson(response.body(), new TypeToken<Map<String, Object>>(){});
+			forecast.remove("current_units");
+			forecast.remove("current");
+			((Map<String, Object>) forecast.get("hourly_units")).remove("relative_humidity_2m");
+			((Map<String, Object>) forecast.get("hourly_units")).remove("wind_speed_10m");
+			((Map<String, Object>) forecast.get("hourly")).remove("relative_humidity_2m");
+			((Map<String, Object>) forecast.get("hourly")).remove("wind_speed_10m");
 			var item = new Item()
 					.withPrimaryKey("id", id)
 					.withMap("forecast", forecast);
