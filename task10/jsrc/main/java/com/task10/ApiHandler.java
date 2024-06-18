@@ -100,7 +100,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 
 			AdminCreateUserRequest cognitoRequest = new AdminCreateUserRequest()
 					.withMessageAction(MessageActionType.SUPPRESS)
-					.withUserPoolId(bookingUserpool)
+					.withUserPoolId(getUserPoolId())
 					.withUsername(requestMap.get("email"))
 					.withTemporaryPassword(requestMap.get("password"))
 					.withForceAliasCreation(false);
@@ -141,7 +141,8 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 			var authRequest = new AdminInitiateAuthRequest()
 					.withAuthFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
 					.withAuthParameters(authParams)
-					.withUserPoolId(bookingUserpool);
+					.withUserPoolId(getUserPoolId())
+					.withClientId(getClientId());
 
 			var authResponse = cognitoClient.adminInitiateAuth(authRequest);
 			var accessToken = authResponse.getAuthenticationResult().getAccessToken();
@@ -186,7 +187,6 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	}
 
 	public class InvalidRequest extends RuntimeException {
-
 	}
 
 	private static boolean isValidEmailAddress(String email) {
@@ -198,6 +198,24 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 			result = false;
 		}
 		return result;
+	}
+
+	private String getUserPoolId() {
+		return cognitoClient.listUserPools(new ListUserPoolsRequest().withMaxResults(10))
+				.getUserPools().stream()
+				.filter(pool -> pool.getName().contains(bookingUserpool))
+				.findAny()
+				.orElseThrow(() -> new RuntimeException(String.format("User pool %s not found.", bookingUserpool)))
+				.getId();
+	}
+
+	private String getClientId() {
+		return cognitoClient.listUserPoolClients(new ListUserPoolClientsRequest().withUserPoolId(bookingUserpool).withMaxResults(1))
+				.getUserPoolClients().stream()
+				.filter(client -> client.getClientName().contains("client-app"))
+				.findAny()
+				.orElseThrow(() -> new RuntimeException(String.format("Client 'client-app' not found.", bookingUserpool)))
+				.getClientId();
 	}
 
 //	public record Signup(
