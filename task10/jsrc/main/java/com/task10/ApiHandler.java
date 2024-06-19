@@ -125,6 +125,8 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 					.withClientId(getClientId());
 			cognitoClient.signUp(signUpRequest);
 
+			Thread.sleep(5000);
+
 			AdminConfirmSignUpRequest adminConfirmSignUpRequest = new AdminConfirmSignUpRequest()
 					.withUsername(requestMap.get("email"))
 							.withUserPoolId(getUserPoolId());
