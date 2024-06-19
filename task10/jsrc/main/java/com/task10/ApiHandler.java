@@ -116,6 +116,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		var body = requestEvent.getBody();
 		try {
 			var requestMap = gson.fromJson(body, new TypeToken<Map<String, String>>(){});
+			logger.log("signup request: " + requestMap.toString());
 			validateSignupRequest(requestMap);
 
 			SignUpRequest signUpRequest = new SignUpRequest()
