@@ -146,7 +146,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 			//validateSigninRequest(requestMap);
 
 			var authRequest = new AdminInitiateAuthRequest()
-					.withAuthFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
+					.withAuthFlow(AuthFlowType.ADMIN_USER_PASSWORD_AUTH)
 					.withAuthParameters(Map.of(
 							"USERNAME", requestMap.get("email"),
 							"PASSWORD", requestMap.get("password")
