@@ -34,6 +34,10 @@ import org.apache.http.HttpStatus;
 import java.util.*;
 import java.util.regex.Pattern;
 
+import static com.task10.Util.badRequest;
+import static com.task10.Util.ok;
+import static com.task10.Validator.*;
+
 @LambdaHandler(
 		lambdaName = "api_handler",
 		roleName = "api_handler-role",
@@ -59,7 +63,6 @@ import java.util.regex.Pattern;
 public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 	private static final AWSCognitoIdentityProvider cognitoClient = AWSCognitoIdentityProviderClientBuilder.defaultClient();
 	private static final Gson gson = new Gson();
-	private static final Pattern passwordPattern = Pattern.compile("^[\\w$%^*]+$");
 	private static final Regions REGION = Regions.EU_CENTRAL_1;
 
 	private final String tablesTable;
@@ -134,23 +137,6 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		}
 	}
 
-	private void validateSignupRequest(Map<String, String> requestMap) {
-		if (!StringUtils.isNullOrEmpty(requestMap.get("firstName"))
-				&& !StringUtils.isNullOrEmpty(requestMap.get("lastName"))
-				&& isValidEmailAddress(requestMap.get("email"))
-				&& !StringUtils.isNullOrEmpty(requestMap.get("password"))
-				&& (requestMap.get("password")).length() >= 12
-				&& Pattern.compile("[A-Z]").matcher(requestMap.get("password")).find()
-				&& Pattern.compile("[a-z]").matcher(requestMap.get("password")).find()
-				&& Pattern.compile("[0-9]").matcher(requestMap.get("password")).find()
-				&& Pattern.compile("[$%^*]").matcher(requestMap.get("password")).find()
-		) {
-			return;
-		}
-
-		throw new InvalidRequest();
-	}
-
 	private APIGatewayProxyResponseEvent handleSignin(APIGatewayProxyRequestEvent requestEvent) {
 		var body = requestEvent.getBody();
 
@@ -180,18 +166,6 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		}
 	}
 
-	private void validateSigninRequest(Map<String, String> requestMap) {
-		if (isValidEmailAddress(requestMap.get("email"))
-				&& !StringUtils.isNullOrEmpty(requestMap.get("password"))
-				&& (requestMap.get("password")).length() >= 12
-				&& passwordPattern.matcher(requestMap.get("password")).matches()
-		) {
-			return;
-		}
-
-		throw new InvalidRequest();
-	}
-
 	private APIGatewayProxyResponseEvent handleTables(APIGatewayProxyRequestEvent requestEvent) {
 		try {
 			switch (requestEvent.getHttpMethod()) {
@@ -217,7 +191,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		}
 	}
 
-	private List<Map<String, Object>> getTables() {
+	private Map<String, List<Map<String, Object>>> getTables() {
 		ScanRequest scanRequest = new ScanRequest().withTableName(tablesTable);
 		ScanResult result = amazonDynamoDB.scan(scanRequest);
 
@@ -236,7 +210,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 			tables.add(table);
 		}
 
-		return tables;
+		return Map.of("tables", tables);
 	}
 
 	private PostTablesResult postTables(Table request) {
@@ -254,27 +228,66 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		return new PostTablesResult(request.getId());
 	}
 
-	private void validatePostTablesRequest(Table request) {
-		if (request.getId() != null
-				&& request.getNumber() != null
-				&& request.getPlaces() != null
-				&& request.isVip() != null
-		) {
-			return;
+	private APIGatewayProxyResponseEvent handleReservations(APIGatewayProxyRequestEvent requestEvent) {
+		try {
+			switch (requestEvent.getHttpMethod()) {
+				case "GET":
+					return new APIGatewayProxyResponseEvent().withStatusCode(HttpStatus.SC_OK).withBody(
+							gson.toJson(getReservations())
+					);
+				case "POST":
+					Reservation request = gson.fromJson(requestEvent.getBody(), new TypeToken<>() {
+					});
+					validatePostReservationsRequest(request);
+					PostReservationsResult postReservationsResult = postReservations(request);
+					return new APIGatewayProxyResponseEvent().withStatusCode(HttpStatus.SC_OK).withBody(
+							gson.toJson(postReservationsResult)
+					);
+				default:
+					return badRequest();
+			}
+		} catch (Exception ex) {
+			logger.log(ex.toString());
+			logger.log(Arrays.toString(ex.getStackTrace()));
+			return badRequest();
 		}
-
-		throw new InvalidRequest();
 	}
 
-	private APIGatewayProxyResponseEvent handleReservations(APIGatewayProxyRequestEvent requestEvent) {
-		switch (requestEvent.getHttpMethod()) {
-			case "GET":
-				return ok("");
-			case "POST":
-				return ok("");
-			default:
-				return badRequest();
+	private Map<String, List<Reservation>> getReservations() {
+		ScanRequest scanRequest = new ScanRequest().withTableName(reservationsTable);
+		ScanResult result = amazonDynamoDB.scan(scanRequest);
+
+		List<Reservation> reservations = new ArrayList<>();
+
+		for (Map<String, AttributeValue> item : result.getItems()) {
+			Reservation reservation = new Reservation(
+					Integer.valueOf(item.get("tableNumber").getN()),
+					item.get("clientName").getS(),
+					item.get("phoneNumber").getS(),
+					item.get("date").getS(),
+					item.get("slotTimeStart").getS(),
+					item.get("slotTimeEnd").getS()
+			);
+			reservations.add(reservation);
 		}
+
+		return Map.of("reservations", reservations);
+	}
+
+	private PostReservationsResult postReservations(Reservation request) {
+		logger.log(request.toString());
+		String id = UUID.randomUUID().toString();
+		Item item = new Item()
+				.withPrimaryKey("id", id)
+				.withInt("tableNumber", request.getTableNumber())
+				.withString("clientName", request.getClientName())
+				.withString("phoneNumber", request.getPhoneNumber())
+				.withString("date", request.getDate())
+				.withString("slotTimeStart", request.getSlotTimeStart())
+				.withString("slotTimeEnd", request.getSlotTimeEnd());
+
+		dynamoDB.getTable(reservationsTable).putItem(item);
+		return new PostReservationsResult(id);
 	}
 
 	private APIGatewayProxyResponseEvent handleTablesById(APIGatewayProxyRequestEvent requestEvent) {
@@ -310,28 +323,6 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 				minOrder == null ? null : Integer.valueOf(minOrder));
 	}
 
-	private APIGatewayProxyResponseEvent badRequest() {
-		return new APIGatewayProxyResponseEvent().withStatusCode(HttpStatus.SC_BAD_REQUEST);
-	}
-
-	private APIGatewayProxyResponseEvent ok(String message) {
-		return new APIGatewayProxyResponseEvent().withStatusCode(HttpStatus.SC_OK).withBody(message);
-	}
-
-	public class InvalidRequest extends RuntimeException {
-	}
-
-	private static boolean isValidEmailAddress(String email) {
-		boolean result = true;
-		try {
-			InternetAddress emailAddr = new InternetAddress(email);
-			emailAddr.validate();
-		} catch (AddressException ex) {
-			result = false;
-		}
-		return result;
-	}
-
 	private String getUserPoolId() {
 		return cognitoClient.listUserPools(new ListUserPoolsRequest().withMaxResults(10))
 				.getUserPools().stream()
@@ -350,75 +341,4 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 				.getClientId();
 	}
 
-	private static class Table {
-		private Integer id;
-		private Integer number;
-		private Integer places;
-		private Boolean isVip;
-		private Integer minOrder;
-
-		public Table() {
-		}
-
-		public Table(Integer id, Integer number, Integer places, Boolean isVip, Integer minOrder) {
-			this.id = id;
-			this.number = number;
-			this.places = places;
-			this.isVip = isVip;
-			this.minOrder = minOrder;
-		}
-
-
-		public Integer getId() {
-			return id;
-		}
-
-		public void setId(Integer id) {
-			this.id = id;
-		}
-
-		public Integer getNumber() {
-			return number;
-		}
-
-		public void setNumber(Integer number) {
-			this.number = number;
-		}
-
-		public Integer getPlaces() {
-			return places;
-		}
-
-		public void setPlaces(Integer places) {
-			this.places = places;
-		}
-
-		public Boolean isVip() {
-			return isVip;
-		}
-
-		public void setVip(Boolean vip) {
-			isVip = vip;
-		}
-
-		public Integer getMinOrder() {
-			return minOrder;
-		}
-
-		public void setMinOrder(Integer minOrder) {
-			this.minOrder = minOrder;
-		}
-	}
-
-	public static class PostTablesResult {
-		private int id;
-
-		public PostTablesResult(int id) {
-			this.id = id;
-		}
-
-		public int getId() {
-			return id;
-		}
-	}
 }
