@@ -181,15 +181,15 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	}
 
 	private APIGatewayProxyResponseEvent handleTables(APIGatewayProxyRequestEvent requestEvent) {
-		return null;
+		return ok("");
 	}
 
 	private APIGatewayProxyResponseEvent handleReservations(APIGatewayProxyRequestEvent requestEvent) {
-		return null;
+		return ok("");
 	}
 
 	private APIGatewayProxyResponseEvent handleTablesById(APIGatewayProxyRequestEvent requestEvent) {
-		return null;
+		return ok("");
 	}
 
 	private APIGatewayProxyResponseEvent badRequest() {
