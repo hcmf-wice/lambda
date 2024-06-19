@@ -22,7 +22,7 @@ class Validator {
                 && Pattern.compile("[A-Z]").matcher(requestMap.get("password")).find()
                 && Pattern.compile("[a-z]").matcher(requestMap.get("password")).find()
                 && Pattern.compile("[0-9]").matcher(requestMap.get("password")).find()
-                && Pattern.compile("[$%^*]").matcher(requestMap.get("password")).find()
+                && Pattern.compile("[$%^*_-]").matcher(requestMap.get("password")).find()
         ) {
             return;
         }
