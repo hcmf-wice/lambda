@@ -1,8 +1,18 @@
 package com.task10;
 
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProviderClientBuilder;
 import com.amazonaws.services.cognitoidp.model.*;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.PutItemOutcome;
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
@@ -23,10 +33,7 @@ import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
 import org.apache.http.HttpStatus;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
 @LambdaHandler(
@@ -55,10 +62,13 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	private static final AWSCognitoIdentityProvider cognitoClient = AWSCognitoIdentityProviderClientBuilder.defaultClient();
 	private static final Gson gson = new Gson();
 	private static final Pattern passwordPattern = Pattern.compile("^[\\w$%^*]+$");
+	private static final Regions REGION = Regions.EU_CENTRAL_1;
 
 	private final String tablesTable;
 	private final String reservationsTable;
 	private final String bookingUserpool;
+	private final AmazonDynamoDB amazonDynamoDB;
+	private final DynamoDB dynamoDB;
 
 	private LambdaLogger logger;
 
@@ -66,6 +76,10 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		tablesTable = System.getenv("tables_table");
 		reservationsTable = System.getenv("reservations_table");
 		bookingUserpool = System.getenv("booking_userpool");
+		amazonDynamoDB = AmazonDynamoDBClientBuilder.standard()
+				.withRegion(REGION)
+				.build();
+		dynamoDB = new DynamoDB(amazonDynamoDB);
 	}
 
 	public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent requestEvent, Context context) {
@@ -157,7 +171,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 
 			var authResponse = cognitoClient.adminInitiateAuth(authRequest);
 			logger.log(authResponse.toString());
-			var accessToken = authResponse.getAuthenticationResult().getAccessToken();
+			var accessToken = authResponse.getAuthenticationResult().getIdToken();
 
 			return ok(gson.toJson(Map.of("accessToken", accessToken)));
 
@@ -181,11 +195,88 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	}
 
 	private APIGatewayProxyResponseEvent handleTables(APIGatewayProxyRequestEvent requestEvent) {
-		return ok("");
+		try {
+			switch (requestEvent.getHttpMethod()) {
+				case "GET":
+					return new APIGatewayProxyResponseEvent().withStatusCode(HttpStatus.SC_OK).withBody(
+							gson.toJson(getTables())
+					);
+				case "POST":
+					PostTablesRequest request = gson.fromJson(requestEvent.getBody(), new TypeToken<>() {
+					});
+					PostTablesResult postTablesResult = postTables(request);
+					return new APIGatewayProxyResponseEvent().withStatusCode(HttpStatus.SC_OK).withBody(
+							gson.toJson(postTablesResult)
+					);
+				default:
+					return badRequest();
+			}
+		} catch (Exception ex) {
+			logger.log(ex.toString());
+			logger.log(Arrays.toString(ex.getStackTrace()));
+			return badRequest();
+		}
+	}
+
+	private List<Map<String, Object>> getTables() {
+		ScanRequest scanRequest = new ScanRequest().withTableName(tablesTable);
+		ScanResult result = amazonDynamoDB.scan(scanRequest);
+
+		List<Map<String, Object>> tables = new ArrayList<>();
+
+		for (Map<String, AttributeValue> item : result.getItems()) {
+			Map<String, Object> table = new HashMap<>();
+			table.put("id", Integer.valueOf(item.get("id").getS()));
+			table.put("number", Integer.valueOf(item.get("number").getN()));
+			table.put("places", Integer.valueOf(item.get("places").getN()));
+			table.put("isVip", item.get("isVip").getBOOL());
+			var minOrder = item.get("minOrder");
+			if (minOrder != null) {
+				table.put("minOrder", Integer.valueOf(minOrder.getN()));
+			}
+			tables.add(table);
+		}
+
+		return tables;
+	}
+
+	private PostTablesResult postTables(PostTablesRequest request) {
+		logger.log(request.toString());
+		Item item = new Item()
+				.withPrimaryKey("id", String.valueOf(request.getId()))
+				.withInt("number", request.getNumber())
+				.withInt("places", request.getPlaces())
+				.withBoolean("isVip", request.isVip());
+		if (request.getMinOrder() != null) {
+			item = item.withInt("minOrder", request.getMinOrder());
+		}
+
+		dynamoDB.getTable(tablesTable).putItem(item);
+		return new PostTablesResult(request.getId());
+	}
+
+	private void validatePostTablesRequest(Map<String, Object> requestMap) {
+		if (requestMap.get("id") instanceof Integer
+				&& requestMap.get("number") instanceof Integer
+				&& requestMap.get("places") instanceof Integer
+				&& requestMap.get("isVip") instanceof Boolean
+				&& (!requestMap.containsKey("minOrder") || requestMap.get("minOrder") instanceof Integer)
+		) {
+			return;
+		}
+
+		throw new InvalidRequest();
 	}
 
 	private APIGatewayProxyResponseEvent handleReservations(APIGatewayProxyRequestEvent requestEvent) {
-		return ok("");
+		switch (requestEvent.getHttpMethod()) {
+			case "GET":
+				return ok("");
+			case "POST":
+				return ok("");
+			default:
+				return badRequest();
+		}
 	}
 
 	private APIGatewayProxyResponseEvent handleTablesById(APIGatewayProxyRequestEvent requestEvent) {
@@ -232,48 +323,64 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 				.getClientId();
 	}
 
-//	public record Signup(
-//			String firstName,
-//			String lastName,
-//			String email,
-//			String password
-//	) {}
-//
-//	public record Signin(
-//			String email,
-//			String password
-//	) {}
-//
-//	public record SigninResponse(
-//			String accessToken
-//	) {}
-//
-//	public record Tables(
-//			List<Table> tables
-//	) {}
-//
-//	public record Table(
-//			int id,
-//			int number,
-//			int places,
-//			boolean isVip,
-//			Integer minOrder
-//	) {}
-//
-//	public record TableResponse(
-//			int id
-//	) {}
-//
-//	public record Reservation(
-//			int tableNumber,
-//			String clientName,
-//			String phoneNumber,
-//			String date,
-//			String slotTimeStart,
-//			String slotTimeEnd
-//	) {}
-//
-//	public record ReservationResponse(
-//			String reservationId
-//	) {}
+	private static class PostTablesRequest {
+		private int id;
+		private int number;
+		private int places;
+		private boolean isVip;
+		private Integer minOrder;
+
+
+		public int getId() {
+			return id;
+		}
+
+		public void setId(int id) {
+			this.id = id;
+		}
+
+		public int getNumber() {
+			return number;
+		}
+
+		public void setNumber(int number) {
+			this.number = number;
+		}
+
+		public int getPlaces() {
+			return places;
+		}
+
+		public void setPlaces(int places) {
+			this.places = places;
+		}
+
+		public boolean isVip() {
+			return isVip;
+		}
+
+		public void setVip(boolean vip) {
+			isVip = vip;
+		}
+
+		public Integer getMinOrder() {
+			return minOrder;
+		}
+
+		public void setMinOrder(Integer minOrder) {
+			this.minOrder = minOrder;
+		}
+	}
+
+	public static class PostTablesResult {
+		private int id;
+
+		public PostTablesResult(int id) {
+			this.id = id;
+		}
+
+		public int getId() {
+			return id;
+		}
+	}
 }
