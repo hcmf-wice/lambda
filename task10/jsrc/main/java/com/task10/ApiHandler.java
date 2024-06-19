@@ -5,11 +5,10 @@ import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProviderClientBuilder;
 import com.amazonaws.services.cognitoidp.model.*;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
-import com.amazonaws.services.dynamodbv2.document.PutItemOutcome;
+import com.amazonaws.services.dynamodbv2.document.PrimaryKey;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
@@ -20,7 +19,6 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.amazonaws.util.StringUtils;
 import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import com.syndicate.deployment.annotations.environment.EnvironmentVariable;
 import com.syndicate.deployment.annotations.environment.EnvironmentVariables;
@@ -202,8 +200,9 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 							gson.toJson(getTables())
 					);
 				case "POST":
-					PostTablesRequest request = gson.fromJson(requestEvent.getBody(), new TypeToken<>() {
+					Table request = gson.fromJson(requestEvent.getBody(), new TypeToken<>() {
 					});
+					validatePostTablesRequest(request);
 					PostTablesResult postTablesResult = postTables(request);
 					return new APIGatewayProxyResponseEvent().withStatusCode(HttpStatus.SC_OK).withBody(
 							gson.toJson(postTablesResult)
@@ -240,7 +239,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		return tables;
 	}
 
-	private PostTablesResult postTables(PostTablesRequest request) {
+	private PostTablesResult postTables(Table request) {
 		logger.log(request.toString());
 		Item item = new Item()
 				.withPrimaryKey("id", String.valueOf(request.getId()))
@@ -255,12 +254,11 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		return new PostTablesResult(request.getId());
 	}
 
-	private void validatePostTablesRequest(Map<String, Object> requestMap) {
-		if (requestMap.get("id") instanceof Integer
-				&& requestMap.get("number") instanceof Integer
-				&& requestMap.get("places") instanceof Integer
-				&& requestMap.get("isVip") instanceof Boolean
-				&& (!requestMap.containsKey("minOrder") || requestMap.get("minOrder") instanceof Integer)
+	private void validatePostTablesRequest(Table request) {
+		if (request.getId() != null
+				&& request.getNumber() != null
+				&& request.getPlaces() != null
+				&& request.isVip() != null
 		) {
 			return;
 		}
@@ -280,7 +278,36 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	}
 
 	private APIGatewayProxyResponseEvent handleTablesById(APIGatewayProxyRequestEvent requestEvent) {
-		return ok("");
+		try {
+			switch (requestEvent.getHttpMethod()) {
+				case "GET":
+					String tableId = requestEvent.getPathParameters().get("tableId");
+					logger.log("handleTablesById: tableId=" + tableId);
+					return new APIGatewayProxyResponseEvent().withStatusCode(HttpStatus.SC_OK).withBody(
+							gson.toJson(getTable(tableId))
+					);
+				default:
+					return badRequest();
+			}
+		} catch (Exception ex) {
+			logger.log(ex.toString());
+			logger.log(Arrays.toString(ex.getStackTrace()));
+			return badRequest();
+		}
+	}
+
+	private Table getTable(String id) {
+		Item item = dynamoDB.getTable(tablesTable).getItem(new PrimaryKey("id", id));
+		if (item == null) {
+			return null;
+		}
+		String minOrder = item.getString("minOrder");
+		return new Table(
+				Integer.valueOf(item.getString("id")),
+				item.getInt("number"),
+				item.getInt("places"),
+				item.getBoolean("isVip"),
+				minOrder == null ? null : Integer.valueOf(minOrder));
 	}
 
 	private APIGatewayProxyResponseEvent badRequest() {
@@ -323,43 +350,54 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 				.getClientId();
 	}
 
-	private static class PostTablesRequest {
-		private int id;
-		private int number;
-		private int places;
-		private boolean isVip;
+	private static class Table {
+		private Integer id;
+		private Integer number;
+		private Integer places;
+		private Boolean isVip;
 		private Integer minOrder;
 
+		public Table() {
+		}
 
-		public int getId() {
+		public Table(Integer id, Integer number, Integer places, Boolean isVip, Integer minOrder) {
+			this.id = id;
+			this.number = number;
+			this.places = places;
+			this.isVip = isVip;
+			this.minOrder = minOrder;
+		}
+
+
+		public Integer getId() {
 			return id;
 		}
 
-		public void setId(int id) {
+		public void setId(Integer id) {
 			this.id = id;
 		}
 
-		public int getNumber() {
+		public Integer getNumber() {
 			return number;
 		}
 
-		public void setNumber(int number) {
+		public void setNumber(Integer number) {
 			this.number = number;
 		}
 
-		public int getPlaces() {
+		public Integer getPlaces() {
 			return places;
 		}
 
-		public void setPlaces(int places) {
+		public void setPlaces(Integer places) {
 			this.places = places;
 		}
 
-		public boolean isVip() {
+		public Boolean isVip() {
 			return isVip;
 		}
 
-		public void setVip(boolean vip) {
+		public void setVip(Boolean vip) {
 			isVip = vip;
 		}
 
