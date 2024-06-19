@@ -103,20 +103,16 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 			var requestMap = gson.fromJson(body, new TypeToken<Map<String, String>>(){});
 			validateSignupRequest(requestMap);
 
-//			AdminCreateUserRequest cognitoRequest = new AdminCreateUserRequest()
-//					.withMessageAction(MessageActionType.SUPPRESS)
-//					.withUserPoolId(getUserPoolId())
-//					.withUsername(requestMap.get("email"))
-//					.withTemporaryPassword(requestMap.get("password"))
-//					.withForceAliasCreation(false);
-//
-//			cognitoClient.adminCreateUser(cognitoRequest);
-
 			SignUpRequest signUpRequest = new SignUpRequest()
 					.withUsername(requestMap.get("email"))
 					.withPassword(requestMap.get("password"))
 					.withClientId(getClientId());
 			cognitoClient.signUp(signUpRequest);
+
+			AdminConfirmSignUpRequest adminConfirmSignUpRequest = new AdminConfirmSignUpRequest()
+					.withUsername(requestMap.get("email"))
+							.withUserPoolId(getUserPoolId());
+			cognitoClient.adminConfirmSignUp(adminConfirmSignUpRequest);
 
 			return ok("");
 		} catch (Exception ex) {
@@ -151,7 +147,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 			validateSigninRequest(requestMap);
 
 			var authRequest = new AdminInitiateAuthRequest()
-					.withAuthFlow(AuthFlowType.ADMIN_USER_PASSWORD_AUTH)
+					.withAuthFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
 					.withAuthParameters(Map.of(
 							"USERNAME", requestMap.get("email"),
 							"PASSWORD", requestMap.get("password")
