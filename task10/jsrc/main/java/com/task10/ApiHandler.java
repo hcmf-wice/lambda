@@ -143,7 +143,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 
 		try {
 			var requestMap = gson.fromJson(body, new TypeToken<Map<String, String>>(){});
-			validateSigninRequest(requestMap);
+			//validateSigninRequest(requestMap);
 
 			var authRequest = new AdminInitiateAuthRequest()
 					.withAuthFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)

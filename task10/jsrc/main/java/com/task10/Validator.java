@@ -51,17 +51,17 @@ class Validator {
         }
     }
 
-    static void validateSigninRequest(Map<String, String> requestMap) {
-        if (isValidEmailAddress(requestMap.get("email"))
-                && !StringUtils.isNullOrEmpty(requestMap.get("password"))
-                && (requestMap.get("password")).length() >= 12
-                && PASSWORD_PATTERN.matcher(requestMap.get("password")).matches()
-        ) {
-            return;
-        }
-
-        throw new InvalidRequest();
-    }
+//    static void validateSigninRequest(Map<String, String> requestMap) {
+//        if (isValidEmailAddress(requestMap.get("email"))
+//                && !StringUtils.isNullOrEmpty(requestMap.get("password"))
+//                && (requestMap.get("password")).length() >= 12
+//                && PASSWORD_PATTERN.matcher(requestMap.get("password")).matches()
+//        ) {
+//            return;
+//        }
+//
+//        throw new InvalidRequest();
+//    }
 
     static void validatePostTablesRequest(Table request) {
         if (request.getId() != null
