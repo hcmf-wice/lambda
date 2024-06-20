@@ -133,6 +133,8 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 					.withUserPoolId(getUserPoolId());
 			cognitoClient.adminConfirmSignUp(adminConfirmSignUpRequest);
 
+			Thread.sleep(5000);
+
 			return ok("");
 		} catch (Exception ex) {
 			logger.log(ex.toString());
