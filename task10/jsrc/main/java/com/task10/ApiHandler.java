@@ -120,20 +120,23 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 			logger.log("signup request: " + requestMap.toString());
 			validateSignupRequest(requestMap);
 
-			SignUpRequest signUpRequest = new SignUpRequest()
+			AdminCreateUserRequest adminCreateUserRequest = new AdminCreateUserRequest()
+					.withMessageAction(MessageActionType.SUPPRESS)
+					.withUserPoolId(getUserPoolId())
 					.withUsername(requestMap.get("email"))
-					.withPassword(requestMap.get("password"))
-					.withClientId(getClientId());
-			cognitoClient.signUp(signUpRequest);
+					.withTemporaryPassword(requestMap.get("password"))
+					.withForceAliasCreation(false);
 
-			Thread.sleep(1000);
+			cognitoClient.adminCreateUser(adminCreateUserRequest);
+
+			Thread.sleep(5000);
 
 			Map<String,String> initialParams = new HashMap<>();
 			initialParams.put("USERNAME", requestMap.get("email"));
 			initialParams.put("PASSWORD", requestMap.get("password"));
 
 			AdminInitiateAuthRequest initialRequest = new AdminInitiateAuthRequest()
-					.withAuthFlow(AuthFlowType.ADMIN_USER_PASSWORD_AUTH)
+					.withAuthFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
 					.withAuthParameters(initialParams)
 					.withClientId(getClientId())
 					.withUserPoolId(getUserPoolId());
