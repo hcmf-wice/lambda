@@ -17,6 +17,8 @@
   "paths": {
     "/reservations": {
       "get": {
+        "summary":  "Get all reservations",
+        "description":  "Retrieves the list of existing reservations",
         "responses": {
           "200": {
             "description": "200 response",
@@ -147,6 +149,8 @@
     },
     "/tables": {
       "get": {
+        "summary":  "Get all tables",
+        "description":  "Retrieves the list of existing tables",
         "responses": {
           "200": {
             "description": "200 response",
@@ -187,6 +191,8 @@
         }
       },
       "post": {
+        "summary":  "Get all reservations",
+        "description":  "Retrieves the list of existing reservations",
         "responses": {
           "200": {
             "description": "200 response",
@@ -277,6 +283,8 @@
     },
     "/signin": {
       "post": {
+        "summary":  "Sign in",
+        "description":  "Signs in a user with a username (email) and password. Returns an access token.",
         "responses": {
           "200": {
             "description": "200 response",
@@ -362,6 +370,8 @@
     },
     "/tables/{tableId}": {
       "get": {
+        "summary":  "Get a table by id",
+        "description":  "Retrieves the table with a given id",
         "parameters": [
           {
             "name": "tableId",
@@ -472,6 +482,8 @@
     },
     "/signup": {
       "post": {
+        "summary":  "Sign up",
+        "description":  "Creates a user with the provided information.",
         "responses": {
           "200": {
             "description": "200 response",
