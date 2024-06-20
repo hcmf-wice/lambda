@@ -126,14 +126,40 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 					.withClientId(getClientId());
 			cognitoClient.signUp(signUpRequest);
 
-			Thread.sleep(5000);
+			Thread.sleep(1000);
 
-			AdminConfirmSignUpRequest adminConfirmSignUpRequest = new AdminConfirmSignUpRequest()
-					.withUsername(requestMap.get("email"))
+			Map<String,String> initialParams = new HashMap<>();
+			initialParams.put("USERNAME", requestMap.get("email"));
+			initialParams.put("PASSWORD", requestMap.get("password"));
+
+			AdminInitiateAuthRequest initialRequest = new AdminInitiateAuthRequest()
+					.withAuthFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
+					.withAuthParameters(initialParams)
+					.withClientId(getClientId())
 					.withUserPoolId(getUserPoolId());
-			cognitoClient.adminConfirmSignUp(adminConfirmSignUpRequest);
 
-			Thread.sleep(5000);
+			AdminInitiateAuthResult initialResponse = cognitoClient.adminInitiateAuth(initialRequest);
+			if (! ChallengeNameType.NEW_PASSWORD_REQUIRED.name().equals(initialResponse.getChallengeName()))
+			{
+				throw new RuntimeException("unexpected challenge: " + initialResponse.getChallengeName());
+			}
+
+			Map<String,String> challengeResponses = new HashMap<>();
+			challengeResponses.put("USERNAME", requestMap.get("email"));
+			challengeResponses.put("PASSWORD", requestMap.get("password"));
+			challengeResponses.put("NEW_PASSWORD", requestMap.get("password"));
+
+			AdminRespondToAuthChallengeRequest finalRequest = new AdminRespondToAuthChallengeRequest()
+					.withChallengeName(ChallengeNameType.NEW_PASSWORD_REQUIRED)
+					.withChallengeResponses(challengeResponses)
+					.withClientId(getClientId())
+					.withUserPoolId(getUserPoolId())
+					.withSession(initialResponse.getSession());
+
+			AdminRespondToAuthChallengeResult challengeResponse = cognitoClient.adminRespondToAuthChallenge(finalRequest);
+			if (!StringUtils.isNullOrEmpty(challengeResponse.getChallengeName())) {
+				throw new RuntimeException("unexpected challenge: " + challengeResponse.getChallengeName());
+			}
 
 			return ok("");
 		} catch (Exception ex) {
