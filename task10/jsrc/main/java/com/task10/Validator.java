@@ -4,7 +4,9 @@ import com.amazonaws.util.StringUtils;
 import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 import static com.task10.Util.isValidEmailAddress;
@@ -51,18 +53,6 @@ class Validator {
         }
     }
 
-//    static void validateSigninRequest(Map<String, String> requestMap) {
-//        if (isValidEmailAddress(requestMap.get("email"))
-//                && !StringUtils.isNullOrEmpty(requestMap.get("password"))
-//                && (requestMap.get("password")).length() >= 12
-//                && PASSWORD_PATTERN.matcher(requestMap.get("password")).matches()
-//        ) {
-//            return;
-//        }
-//
-//        throw new InvalidRequest();
-//    }
-
     static void validatePostTablesRequest(Table request) {
         if (request.getId() != null
                 && request.getNumber() != null
@@ -75,17 +65,38 @@ class Validator {
         throw new InvalidRequest();
     }
 
-    public static void validatePostReservationsRequest(Reservation request) {
+    public static void validatePostReservationsRequest(Reservation request, List<Integer> tableIds, List<Reservation> reservations) {
         if (request.getTableNumber() != null
                 && request.getClientName() != null
                 && request.getPhoneNumber() != null
                 && request.getDate() != null
                 && request.getSlotTimeStart() != null
                 && request.getSlotTimeEnd() != null
+                && tableIds.contains(request.getTableNumber())
+                && noOverlap(request, reservations)
         ) {
             return;
         }
 
         throw new InvalidRequest();
+    }
+
+    public static boolean noOverlap(Reservation reservation, List<Reservation> reservations) {
+        Integer tableNumber = reservation.getTableNumber();
+        String date = reservation.getDate();
+        String startTime = reservation.getSlotTimeStart();
+        String endTime = reservation.getSlotTimeEnd();
+
+        for (Reservation r : reservations) {
+            if (Objects.equals(r.getTableNumber(), tableNumber) && Objects.equals(r.getDate(), date)) {
+                if (!(StringUtils.compare(r.getSlotTimeStart(), endTime) >= 0
+                        || StringUtils.compare(r.getSlotTimeEnd(), startTime) <= 0)) {
+                    return false;
+                }
+            }
+        }
+
+
+        return true;
     }
 }

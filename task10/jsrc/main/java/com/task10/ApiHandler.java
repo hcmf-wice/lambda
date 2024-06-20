@@ -33,6 +33,7 @@ import org.apache.http.HttpStatus;
 
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.task10.Util.badRequest;
 import static com.task10.Util.ok;
@@ -256,6 +257,15 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		return Map.of("tables", tables);
 	}
 
+	private List<Integer> getTableIds() {
+		ScanRequest scanRequest = new ScanRequest().withTableName(tablesTable);
+		ScanResult result = amazonDynamoDB.scan(scanRequest);
+
+		return result.getItems().stream()
+				.map(item -> Integer.valueOf(item.get("id").getS()))
+				.collect(Collectors.toList());
+	}
+
 	private PostTablesResult postTables(Table request) {
 		logger.log(request.toString());
 		Item item = new Item()
@@ -281,7 +291,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 				case "POST":
 					Reservation request = gson.fromJson(requestEvent.getBody(), new TypeToken<>() {
 					});
-					validatePostReservationsRequest(request);
+					validatePostReservationsRequest(request, getTableIds(), getReservations().get("reservations"));
 					PostReservationsResult postReservationsResult = postReservations(request);
 					return new APIGatewayProxyResponseEvent().withStatusCode(HttpStatus.SC_OK).withBody(
 							gson.toJson(postReservationsResult)
