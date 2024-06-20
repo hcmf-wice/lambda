@@ -291,7 +291,12 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 				case "POST":
 					Reservation request = gson.fromJson(requestEvent.getBody(), new TypeToken<>() {
 					});
-					validatePostReservationsRequest(request, getTableIds(), getReservations().get("reservations"));
+					logger.log("post reservation: " + request);
+					List<Integer> tableIds = getTableIds();
+					logger.log("tableIds: " + tableIds);
+					List<Reservation> reservations = getReservations().get("reservations");
+					logger.log("reservations: " + reservations);
+					validatePostReservationsRequest(request, tableIds, reservations);
 					PostReservationsResult postReservationsResult = postReservations(request);
 					return new APIGatewayProxyResponseEvent().withStatusCode(HttpStatus.SC_OK).withBody(
 							gson.toJson(postReservationsResult)
