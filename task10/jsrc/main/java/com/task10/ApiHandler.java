@@ -146,6 +146,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 
 		try {
 			var requestMap = gson.fromJson(body, new TypeToken<Map<String, String>>(){});
+			logger.log("signin request: " + requestMap.toString());
 			//validateSigninRequest(requestMap);
 
 			var authRequest = new AdminInitiateAuthRequest()
