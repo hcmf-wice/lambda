@@ -27,12 +27,9 @@ import com.syndicate.deployment.annotations.resources.DependsOn;
 import com.syndicate.deployment.model.DeploymentRuntime;
 import com.syndicate.deployment.model.ResourceType;
 import com.syndicate.deployment.model.RetentionSetting;
-import jakarta.mail.internet.AddressException;
-import jakarta.mail.internet.InternetAddress;
 import org.apache.http.HttpStatus;
 
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.task10.Util.badRequest;
@@ -257,12 +254,12 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		return Map.of("tables", tables);
 	}
 
-	private List<Integer> getTableIds() {
+	private List<Integer> getTableNumbers() {
 		ScanRequest scanRequest = new ScanRequest().withTableName(tablesTable);
 		ScanResult result = amazonDynamoDB.scan(scanRequest);
 
 		return result.getItems().stream()
-				.map(item -> Integer.valueOf(item.get("id").getS()))
+				.map(item -> Integer.valueOf(item.get("number").getN()))
 				.collect(Collectors.toList());
 	}
 
@@ -289,14 +286,13 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 							gson.toJson(getReservations())
 					);
 				case "POST":
-					Reservation request = gson.fromJson(requestEvent.getBody(), new TypeToken<>() {
-					});
+					Reservation request = gson.fromJson(requestEvent.getBody(), new TypeToken<>(){});
 					logger.log("post reservation: " + request);
-					List<Integer> tableIds = getTableIds();
-					logger.log("tableIds: " + tableIds);
+					List<Integer> tableNumbers = getTableNumbers();
+					logger.log("tableIds: " + tableNumbers);
 					List<Reservation> reservations = getReservations().get("reservations");
 					logger.log("reservations: " + reservations);
-					validatePostReservationsRequest(request, tableIds, reservations);
+					validatePostReservationsRequest(request, tableNumbers, reservations);
 					PostReservationsResult postReservationsResult = postReservations(request);
 					return new APIGatewayProxyResponseEvent().withStatusCode(HttpStatus.SC_OK).withBody(
 							gson.toJson(postReservationsResult)

@@ -1,20 +1,25 @@
 package com.task10;
 
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.Gson;
+
 import java.util.List;
 import java.util.Map;
 
 public class Test {
     public static void main(String[] args) {
-        System.out.println(Validator.noOverlap(
-                new Reservation(1, "", "",
-                        "1234-56-78", "12:00", "15:30"),
-                List.of(
-                        new Reservation(1, "", "",
-                                "1234-56-78", "15:00", "17:00"),
-        new Reservation(1, "", "",
-                "1234-56-78", "18:00", "19:00")
-                )
-                ));
+        Gson gson = new Gson();
+        Reservation request = gson.fromJson("{\n" +
+                "  \"tableNumber\": 12345,\n" +
+                "  \"clientName\": \"qwe\",\n" +
+                "  \"phoneNumber\": \"123-4567\",\n" +
+                "  \"date\": \"1234-56-78\",\n" +
+                "  \"slotTimeStart\": \"13:00\",\n" +
+                "  \"slotTimeEnd\": \"15:00\"\n" +
+                "}", new TypeToken<>(){});
+        System.out.println(request);
+
+        Validator.validatePostReservationsRequest(request, List.of());
     }
 }
 
