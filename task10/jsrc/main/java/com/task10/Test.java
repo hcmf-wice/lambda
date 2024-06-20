@@ -18,8 +18,6 @@ public class Test {
                 "  \"slotTimeEnd\": \"15:00\"\n" +
                 "}", new TypeToken<>(){});
         System.out.println(request);
-
-        Validator.validatePostReservationsRequest(request, List.of());
     }
 }
 
