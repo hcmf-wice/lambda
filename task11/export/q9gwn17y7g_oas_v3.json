@@ -36,6 +36,23 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "400 response",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Empty"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -59,9 +76,37 @@
         }
       },
       "post": {
+        "summary":  "Create a reservation",
+        "description":  "Creates a reservation with the given data.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "200 response",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Empty"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response",
             "headers": {
               "Access-Control-Allow-Origin": {
                 "schema": {
@@ -168,6 +213,23 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "400 response",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Empty"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -191,11 +253,37 @@
         }
       },
       "post": {
-        "summary":  "Get all reservations",
-        "description":  "Retrieves the list of existing reservations",
+        "summary":  "Create a table",
+        "description":  "Creates a table with the given data.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "200 response",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Empty"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response",
             "headers": {
               "Access-Control-Allow-Origin": {
                 "schema": {
@@ -285,9 +373,35 @@
       "post": {
         "summary":  "Sign in",
         "description":  "Signs in a user with a username (email) and password. Returns an access token.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "200 response",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Empty"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response",
             "headers": {
               "Access-Control-Allow-Origin": {
                 "schema": {
@@ -371,7 +485,7 @@
     "/tables/{tableId}": {
       "get": {
         "summary":  "Get a table by id",
-        "description":  "Retrieves the table with a given id",
+        "description":  "Retrieves the table with a given id.",
         "parameters": [
           {
             "name": "tableId",
@@ -385,6 +499,23 @@
         "responses": {
           "200": {
             "description": "200 response",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Empty"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response",
             "headers": {
               "Access-Control-Allow-Origin": {
                 "schema": {
@@ -484,9 +615,35 @@
       "post": {
         "summary":  "Sign up",
         "description":  "Creates a user with the provided information.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "200 response",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Empty"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400 response",
             "headers": {
               "Access-Control-Allow-Origin": {
                 "schema": {
