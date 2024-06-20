@@ -328,7 +328,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	}
 
 	private String getUserPoolId() {
-		return cognitoClient.listUserPools(new ListUserPoolsRequest().withMaxResults(10))
+		return cognitoClient.listUserPools(new ListUserPoolsRequest().withMaxResults(100))
 				.getUserPools().stream()
 				.filter(pool -> pool.getName().contains(bookingUserpool))
 				.findAny()
