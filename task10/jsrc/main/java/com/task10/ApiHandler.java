@@ -61,7 +61,6 @@ import static com.task10.Validator.*;
 		}
 )
 public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
-	private static final AWSCognitoIdentityProvider cognitoClient = AWSCognitoIdentityProviderClientBuilder.defaultClient();
 	private static final Gson gson = new Gson();
 	private static final Regions REGION = Regions.EU_CENTRAL_1;
 
@@ -70,6 +69,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	private final String bookingUserpool;
 	private final AmazonDynamoDB amazonDynamoDB;
 	private final DynamoDB dynamoDB;
+	private final AWSCognitoIdentityProvider cognitoClient;
 
 	private LambdaLogger logger;
 
@@ -81,6 +81,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 				.withRegion(REGION)
 				.build();
 		dynamoDB = new DynamoDB(amazonDynamoDB);
+		cognitoClient = AWSCognitoIdentityProviderClientBuilder.standard().withRegion(REGION).build();
 	}
 
 	public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent requestEvent, Context context) {
@@ -129,7 +130,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 
 			AdminConfirmSignUpRequest adminConfirmSignUpRequest = new AdminConfirmSignUpRequest()
 					.withUsername(requestMap.get("email"))
-							.withUserPoolId(getUserPoolId());
+					.withUserPoolId(getUserPoolId());
 			cognitoClient.adminConfirmSignUp(adminConfirmSignUpRequest);
 
 			return ok("");
