@@ -97,7 +97,7 @@
             "s3:GetObject"
           ],
           "Resource": [
-            "arn:aws:s3:::${ui_bucket}/**"
+            "arn:aws:s3:::${ui_bucket}/*"
           ]
         }
       ]
