@@ -133,7 +133,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 			initialParams.put("PASSWORD", requestMap.get("password"));
 
 			AdminInitiateAuthRequest initialRequest = new AdminInitiateAuthRequest()
-					.withAuthFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
+					.withAuthFlow(AuthFlowType.ADMIN_USER_PASSWORD_AUTH)
 					.withAuthParameters(initialParams)
 					.withClientId(getClientId())
 					.withUserPoolId(getUserPoolId());
